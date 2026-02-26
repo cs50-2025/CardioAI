@@ -1,0 +1,8 @@
+{
+  "name": "CardioAI - Futuristic Cardiovascular Platform",
+  "description": "A production-ready cardiovascular healthcare AI platform featuring real-time monitoring, AI risk prediction, and live fitness systems.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

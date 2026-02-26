@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-neon-blue: #00f2ff;
+  --color-neon-purple: #bc13fe;
+  --color-neon-pink: #ff00bd;
+  --color-neon-green: #39ff14;
+}
+
+@layer base {
+  body {
+    @apply bg-[#050505] text-white font-sans antialiased overflow-x-hidden transition-colors duration-300;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    body {
+      cursor: none;
+    }
+    a, button, [role="button"] {
+      cursor: none;
+    }
+  }
+
+  body.light-mode {
+    @apply bg-[#f8f9fa] text-[#1a1a1a];
+  }
+
+  body.high-contrast {
+    @apply contrast-125 saturate-150;
+  }
+}
+
+.glass {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 transition-all;
+}
+
+.glass:hover {
+  @apply border-white/20 bg-white/10 -translate-y-1 shadow-[0_10px_30px_rgba(0,0,0,0.3)];
+}
+
+.light-mode .glass {
+  @apply bg-white/80 backdrop-blur-md border border-black/10 shadow-sm;
+}
+
+.glass-dark {
+  @apply bg-black/40 backdrop-blur-2xl border border-white/5;
+}
+
+/* Menu should stay dark as requested */
+.sidebar-dark {
+  @apply bg-[#050505] text-white border-r border-white/10;
+}
+
+.high-contrast .neon-text {
+  @apply text-neon-blue drop-shadow-[0_0_12px_rgba(0,242,255,0.8)] font-bold;
+}
+
+.high-contrast .glass {
+  @apply border-2;
+}
+
+.neon-border {
+  @apply border border-neon-blue/30 shadow-[0_0_15px_rgba(0,242,255,0.1)];
+}
+
+.neon-text {
+  @apply text-neon-blue drop-shadow-[0_0_8px_rgba(0,242,255,0.5)];
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 5px #00f2ff, 0 0 10px #00f2ff;
+  }
+  to {
+    box-shadow: 0 0 10px #00f2ff, 0 0 20px #00f2ff;
+  }
+}
+
+@keyframes gradient-slow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient-slow {
+  background-size: 200% 200%;
+  animation: gradient-slow 15s ease infinite;
+}
+
