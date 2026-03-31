@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useSocket } from '../hooks/useSocket';
+import { useMessages } from '../hooks/useSocket';
 import { useTranslation } from '../utils/i18n';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, User, Search, Phone, Video, Info, MoreVertical, MessageSquare, Mic, Square, Play, Activity, Heart, Droplets, X } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Send, User, Search, Phone, Video, Info, MoreVertical, MessageSquare, Mi
 export default function MessagesPage() {
   const { user } = useAuth();
   const { t } = useTranslation(user?.settings?.language || 'en');
-  const { messages, setMessages, sendMessage } = useSocket(user?.id);
+  const { messages, sendMessage } = useMessages(user?.id, selectedContact?.id);
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [input, setInput] = useState('');
@@ -26,7 +26,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (selectedContact) {
-      fetchMessages(selectedContact.id);
+      // No need to fetchMessages, useMessages handles it
     }
   }, [selectedContact]);
 
@@ -50,15 +50,7 @@ export default function MessagesPage() {
     }
   };
 
-  const fetchMessages = async (contactId: string) => {
-    try {
-      const res = await fetch(`/api/messages/${user?.id}/${contactId}`);
-      const data = await res.json();
-      setMessages(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  // fetchMessages removed
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
