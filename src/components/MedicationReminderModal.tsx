@@ -73,7 +73,7 @@ export default function MedicationReminderModal({ medication, onComplete, onClos
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/90 backdrop-blur-md"
+        className="absolute inset-0 bg-background/95 backdrop-blur-md"
       />
       
       <motion.div 
@@ -96,11 +96,11 @@ export default function MedicationReminderModal({ medication, onComplete, onClos
               </div>
               <div>
                 <h2 className="text-2xl font-display font-bold">Medication Reminder</h2>
-                <p className="text-white/60 mt-2">Please take your medication: <span className="text-neon-blue font-bold">{medication.name}</span></p>
+                <p className="text-muted-foreground mt-2">Please take your medication: <span className="text-neon-blue font-bold">{medication.name}</span></p>
               </div>
               <button 
                 onClick={startCamera}
-                className="w-full bg-neon-blue text-black font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform"
+                className="w-full bg-neon-blue text-primary-foreground font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform"
               >
                 <Video className="w-5 h-5" />
                 Record Intake
@@ -116,10 +116,10 @@ export default function MedicationReminderModal({ medication, onComplete, onClos
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/10">
+              <div className="relative aspect-video rounded-2xl overflow-hidden bg-background border border-border">
                 <video ref={videoRef} muted playsInline className="w-full h-full object-cover mirror" />
                 {recording && (
-                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded-full">
+                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-background/80 px-3 py-1.5 rounded-full">
                     <div className="w-2 h-2 bg-red-50 rounded-full animate-pulse" />
                     <span className="text-[10px] font-bold uppercase tracking-widest">Recording...</span>
                   </div>
@@ -127,11 +127,11 @@ export default function MedicationReminderModal({ medication, onComplete, onClos
               </div>
               
               <div className="text-center">
-                <p className="text-sm text-white/60 mb-4">Show yourself taking the medication clearly.</p>
+                <p className="text-sm text-muted-foreground mb-4">Show yourself taking the medication clearly.</p>
                 {!recording ? (
                   <button 
                     onClick={startRecording}
-                    className="w-full bg-red-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2"
+                    className="w-full bg-red-500 text-foreground font-bold py-4 rounded-xl flex items-center justify-center gap-2"
                   >
                     <Camera className="w-5 h-5" />
                     Start Recording
@@ -139,7 +139,7 @@ export default function MedicationReminderModal({ medication, onComplete, onClos
                 ) : (
                   <button 
                     onClick={stopRecording}
-                    className="w-full bg-white/10 text-white font-bold py-4 rounded-xl"
+                    className="w-full bg-muted/50 text-foreground font-bold py-4 rounded-xl"
                   >
                     Stop Recording
                   </button>
@@ -170,11 +170,11 @@ export default function MedicationReminderModal({ medication, onComplete, onClos
               <CheckCircle className="w-16 h-16 text-neon-green mx-auto" />
               <div>
                 <h3 className="text-xl font-bold">Intake Recorded</h3>
-                <p className="text-white/40 mt-2">Your doctor has been notified.</p>
+                <p className="text-muted-foreground mt-2">Your doctor has been notified.</p>
               </div>
               <button 
                 onClick={onClose}
-                className="w-full bg-white/10 text-white font-bold py-4 rounded-xl"
+                className="w-full bg-muted/50 text-foreground font-bold py-4 rounded-xl"
               >
                 Close
               </button>

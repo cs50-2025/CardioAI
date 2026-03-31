@@ -9,6 +9,7 @@ import MeditationPage from './pages/MeditationPage';
 import MessagesPage from './pages/MessagesPage';
 import ChatbotPage from './pages/ChatbotPage';
 import SettingsPage from './pages/SettingsPage';
+import LandingPage from './pages/LandingPage';
 
 import { useState, useEffect } from 'react';
 import MedicationReminderModal from './components/MedicationReminderModal';
@@ -22,6 +23,7 @@ function AppRoutes() {
   const location = useLocation();
   const [activeMedication, setActiveMedication] = useState<any>(null);
   const [showDailyReminder, setShowDailyReminder] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const [remindLaterTime, setRemindLaterTime] = useState<number | null>(() => {
     const saved = localStorage.getItem('daily_reminder_snooze');
     return saved ? parseInt(saved, 10) : null;
@@ -112,7 +114,11 @@ function AppRoutes() {
     return (
       <>
         <AntigravityCursor />
-        <AuthPage />
+        {showAuth ? (
+          <AuthPage onBack={() => setShowAuth(false)} />
+        ) : (
+          <LandingPage onGetStarted={() => setShowAuth(true)} />
+        )}
       </>
     );
   }

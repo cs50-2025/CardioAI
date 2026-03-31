@@ -51,12 +51,16 @@ export async function predictRisk(patientData: any) {
   }
 }
 
-export async function chatWithAI(message: string, context: string) {
-  const prompt = `You are a professional cardiovascular AI assistant. 
+export async function chatWithAI(message: string, context: string, systemInstruction?: string) {
+  const defaultInstruction = `You are a professional cardiovascular AI assistant. 
   Context: ${context}
   User Message: ${message}
   
   Provide a helpful, empathetic, and medically accurate (but with a disclaimer) response. Keep it concise.`;
+
+  const prompt = systemInstruction 
+    ? `${systemInstruction}\n\nContext: ${context}\nUser Message: ${message}`
+    : defaultInstruction;
 
   try {
     const response = await ai.models.generateContent({

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Activity, Shield, User, Lock, Loader2, ArrowRight, Heart, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Activity, Shield, User, Lock, Loader2, ArrowRight, Heart, Sparkles, CheckCircle2, ArrowLeft } from 'lucide-react';
 
-export default function AuthPage() {
+export default function AuthPage({ onBack }: { onBack?: () => void }) {
   const [isLogin, setIsLogin] = useState(true);
   const [isDoctor, setIsDoctor] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -56,9 +56,9 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#050505] text-white overflow-hidden">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
       {/* Left Side: Branding & Visuals */}
-      <div className="lg:w-1/2 relative flex flex-col justify-between p-8 lg:p-16 bg-gradient-to-br from-black to-zinc-900 border-r border-white/5">
+      <div className="lg:w-1/2 relative flex flex-col justify-between p-8 lg:p-16 bg-gradient-to-br from-black to-zinc-900 border-r border-border/50">
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
             <div className="p-2 bg-neon-blue/10 rounded-xl border border-neon-blue/20">
@@ -77,7 +77,7 @@ export default function AuthPage() {
               OF HEART <br />
               <span className="text-neon-blue">HEALTH.</span>
             </h1>
-            <p className="text-white/40 max-w-md text-lg leading-relaxed">
+            <p className="text-muted-foreground max-w-md text-lg leading-relaxed">
               Advanced cardiovascular intelligence for doctors and patients. 
               Real-time monitoring, AI-driven insights, and personalized care.
             </p>
@@ -88,13 +88,13 @@ export default function AuthPage() {
           <div className="flex gap-8 items-center">
             <div className="flex -space-x-4">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="w-10 h-10 rounded-full border-2 border-black bg-zinc-800 flex items-center justify-center overflow-hidden">
+                <div key={i} className="w-10 h-10 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden">
                   <img src={`https://picsum.photos/seed/${i + 10}/100/100`} alt="user" referrerPolicy="no-referrer" />
                 </div>
               ))}
             </div>
-            <p className="text-sm text-white/40">
-              Trusted by <span className="text-white font-medium">2,000+</span> medical professionals worldwide.
+            <p className="text-sm text-muted-foreground">
+              Trusted by <span className="text-foreground font-medium">2,000+</span> medical professionals worldwide.
             </p>
           </div>
         </div>
@@ -106,6 +106,15 @@ export default function AuthPage() {
 
       {/* Right Side: Auth Form */}
       <div className="lg:w-1/2 flex items-center justify-center p-8 lg:p-16 relative">
+        {onBack && (
+          <button 
+            onClick={onBack}
+            className="absolute top-8 left-8 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-all group"
+          >
+            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-sm font-bold uppercase tracking-widest">Back</span>
+          </button>
+        )}
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -115,21 +124,26 @@ export default function AuthPage() {
             <h2 className="text-3xl font-display font-bold mb-2">
               {isLogin ? 'Welcome back' : 'Get started'}
             </h2>
-            <p className="text-white/40">
+            <p className="text-muted-foreground">
               {isLogin ? 'Sign in to access your dashboard' : 'Create your account to start monitoring'}
             </p>
           </div>
 
-          <div className="flex p-1 bg-white/5 rounded-2xl mb-8 border border-white/10">
+          <div className="flex p-1 bg-muted/30 rounded-2xl mb-8 border border-border">
             <button 
               onClick={() => { setIsDoctor(true); setError(''); setSuccessMessage(''); }}
-              className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${isDoctor ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+              className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${isDoctor ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
             >
               Doctor
             </button>
             <button 
-              onClick={() => { setIsDoctor(false); setError(''); setSuccessMessage(''); }}
-              className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${!isDoctor ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+              onClick={() => { 
+                setIsDoctor(false); 
+                setError(''); 
+                setSuccessMessage(''); 
+                setIsLogin(true); // Force login for patients
+              }}
+              className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${!isDoctor ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
             >
               Patient
             </button>
@@ -139,13 +153,13 @@ export default function AuthPage() {
             {isDoctor ? (
               <>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-white/40 uppercase tracking-wider ml-1">Username</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-1">Username</label>
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-blue transition-colors" />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50 group-focus-within:text-neon-blue transition-colors" />
                     <input 
                       type="text" 
                       required
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-neon-blue/50 focus:bg-white/10 transition-all"
+                      className="w-full bg-muted/30 border border-border rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-neon-blue/50 focus:bg-muted/50 transition-all"
                       placeholder="Dr. Smith"
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -153,13 +167,13 @@ export default function AuthPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-white/40 uppercase tracking-wider ml-1">Password</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-1">Password</label>
                   <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-blue transition-colors" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50 group-focus-within:text-neon-blue transition-colors" />
                     <input 
                       type="password" 
                       required
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-neon-blue/50 focus:bg-white/10 transition-all"
+                      className="w-full bg-muted/30 border border-border rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-neon-blue/50 focus:bg-muted/50 transition-all"
                       placeholder="••••••••"
                       value={formData.password}
                       onChange={(e) => setFormData({...formData, password: e.target.value})}
@@ -168,39 +182,20 @@ export default function AuthPage() {
                 </div>
               </>
             ) : (
-              <>
-                {!isLogin ? (
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-white/40 uppercase tracking-wider ml-1">Full Name</label>
-                    <div className="relative group">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-blue transition-colors" />
-                      <input 
-                        type="text" 
-                        required
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-neon-blue/50 focus:bg-white/10 transition-all"
-                        placeholder="John Doe"
-                        value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-white/40 uppercase tracking-wider ml-1">Patient ID</label>
-                    <div className="relative group">
-                      <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-blue transition-colors" />
-                      <input 
-                        type="text" 
-                        required
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-neon-blue/50 focus:bg-white/10 transition-all"
-                        placeholder="e.g. P12345"
-                        value={formData.patientId}
-                        onChange={(e) => setFormData({...formData, patientId: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                )}
-              </>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-1">Patient ID</label>
+                <div className="relative group">
+                  <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50 group-focus-within:text-neon-blue transition-colors" />
+                  <input 
+                    type="text" 
+                    required
+                    className="w-full bg-muted/30 border border-border rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-neon-blue/50 focus:bg-muted/50 transition-all"
+                    placeholder="e.g. P12345"
+                    value={formData.patientId}
+                    onChange={(e) => setFormData({...formData, patientId: e.target.value})}
+                  />
+                </div>
+              </div>
             )}
 
             <AnimatePresence mode="wait">
@@ -232,7 +227,7 @@ export default function AuthPage() {
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               disabled={loading}
-              className="w-full bg-neon-blue hover:bg-neon-blue/90 text-black font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 group shadow-[0_0_30px_rgba(0,242,255,0.15)]"
+              className="w-full bg-neon-blue hover:bg-neon-blue/90 text-primary-foreground font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 group shadow-[0_0_30px_rgba(0,242,255,0.15)]"
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
                 <>
@@ -244,7 +239,7 @@ export default function AuthPage() {
           </form>
 
           <div className="mt-8 text-center">
-            <p className="text-white/40 text-sm">
+            <p className="text-muted-foreground text-sm">
               {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
               <button 
                 onClick={() => {
@@ -252,7 +247,7 @@ export default function AuthPage() {
                   setError('');
                   setSuccessMessage('');
                 }}
-                className="text-white hover:text-neon-blue font-bold transition-colors ml-1"
+                className="text-foreground hover:text-neon-blue font-bold transition-colors ml-1"
               >
                 {isLogin ? 'Sign Up' : 'Sign In'}
               </button>
@@ -261,10 +256,10 @@ export default function AuthPage() {
         </motion.div>
 
         {/* Footer Links */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-6 text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold">
-          <a href="#" className="hover:text-white transition-colors">Privacy</a>
-          <a href="#" className="hover:text-white transition-colors">Terms</a>
-          <a href="#" className="hover:text-white transition-colors">Support</a>
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-6 text-[10px] text-muted-foreground/50 uppercase tracking-[0.2em] font-bold">
+          <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
+          <a href="#" className="hover:text-foreground transition-colors">Terms</a>
+          <a href="#" className="hover:text-foreground transition-colors">Support</a>
         </div>
       </div>
     </div>

@@ -42,10 +42,10 @@ export default function PatientDashboard() {
           <h1 className="text-3xl font-display font-bold">
             {t('welcome')}, <span className="text-neon-blue">{user?.name}</span>
           </h1>
-          <p className="text-white/40 text-sm mt-1">Your cardiovascular health is our priority.</p>
+          <p className="text-muted-foreground text-sm mt-1">Your cardiovascular health is our priority.</p>
         </div>
         <div className="flex gap-3">
-          <button className="glass px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all">
+          <button className="glass px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-muted transition-all">
             <Download className="w-4 h-4" /> Export Report
           </button>
         </div>
@@ -66,17 +66,17 @@ export default function PatientDashboard() {
             transition={{ delay: i * 0.1 }}
             className="glass p-6 rounded-2xl relative overflow-hidden group"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-bl-full -mr-8 -mt-8 transition-all group-hover:scale-110" />
+            <div className="absolute top-0 right-0 w-24 h-24 bg-muted rounded-bl-full -mr-8 -mt-8 transition-all group-hover:scale-110" />
             <div className="flex justify-between items-start mb-4 relative z-10">
-              <div className={`p-2 rounded-lg bg-white/5 ${stat.color}`}>
+              <div className={`p-2 rounded-lg bg-muted ${stat.color}`}>
                 <stat.icon className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{stat.trend}</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{stat.trend}</span>
             </div>
-            <p className="text-xs text-white/40 font-bold uppercase mb-1">{stat.label}</p>
+            <p className="text-xs text-muted-foreground font-bold uppercase mb-1">{stat.label}</p>
             <div className="flex items-baseline gap-1">
               <p className="text-2xl font-display font-bold">{stat.value}</p>
-              <span className="text-[10px] text-white/40 font-mono">{stat.unit}</span>
+              <span className="text-[10px] text-muted-foreground font-mono">{stat.unit}</span>
             </div>
           </motion.div>
         ))}
@@ -90,7 +90,7 @@ export default function PatientDashboard() {
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-2 glass rounded-3xl overflow-hidden flex flex-col"
           >
-            <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
+            <div className="p-6 border-b border-border flex items-center justify-between bg-muted/30">
               <h3 className="font-display font-bold flex items-center gap-2">
                 <Shield className="w-5 h-5 text-neon-blue" />
                 {t('risk')}
@@ -106,7 +106,7 @@ export default function PatientDashboard() {
                   <svg className="w-full h-full transform -rotate-90">
                     <circle
                       cx="96" cy="96" r="88"
-                      className="stroke-white/5 fill-none"
+                      className="stroke-muted fill-none"
                       strokeWidth="12"
                     />
                     <motion.circle
@@ -122,17 +122,17 @@ export default function PatientDashboard() {
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-4xl font-display font-bold">{riskData?.riskScore || '--'}%</span>
-                    <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{riskData?.riskLevel || 'Calculating'}</span>
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{riskData?.riskLevel || 'Calculating'}</span>
                   </div>
                 </div>
-                <p className="mt-6 text-sm text-white/60 leading-relaxed italic">
+                <p className="mt-6 text-sm text-muted-foreground leading-relaxed italic">
                   "{riskData?.insights || 'Analyzing your health data to provide personalized insights...'}"
                 </p>
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <h4 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
                     <AlertTriangle className="w-3 h-3 text-red-400" /> Risk Factors
                   </h4>
                   <div className="flex flex-wrap gap-2">
@@ -144,12 +144,12 @@ export default function PatientDashboard() {
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
                     <TrendingUp className="w-3 h-3 text-neon-green" /> Preventive Actions
                   </h4>
                   <ul className="space-y-2">
                     {riskData?.suggestions?.map((s: string, i: number) => (
-                      <li key={i} className="flex items-center gap-3 text-sm text-white/80">
+                      <li key={i} className="flex items-center gap-3 text-sm text-foreground/80">
                         <div className="w-1.5 h-1.5 rounded-full bg-neon-green" />
                         {s}
                       </li>
@@ -174,7 +174,7 @@ export default function PatientDashboard() {
           animate={{ opacity: 1, x: 0 }}
           className="glass rounded-3xl overflow-hidden flex flex-col"
         >
-          <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
+          <div className="p-6 border-b border-border flex items-center justify-between bg-muted/30">
             <h3 className="font-display font-bold flex items-center gap-2">
               <Activity className="w-5 h-5 text-neon-green" />
               Live ECG
@@ -193,15 +193,15 @@ export default function PatientDashboard() {
                     <stop offset="95%" stopColor="#39ff14" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '8px' }}
-                  itemStyle={{ color: '#39ff14' }}
+                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--card-foreground)' }}
+                  itemStyle={{ color: '#10b981' }}
                 />
                 <Area 
                   type="monotone" 
                   dataKey="value" 
-                  stroke="#39ff14" 
+                  stroke="#10b981" 
                   fillOpacity={1} 
                   fill="url(#colorValue)" 
                   strokeWidth={2}
@@ -210,9 +210,9 @@ export default function PatientDashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="p-6 bg-white/5 border-t border-white/10">
+          <div className="p-6 bg-muted/30 border-t border-border">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-white/40 font-bold uppercase tracking-widest">Avg Heart Rate</span>
+              <span className="text-muted-foreground font-bold uppercase tracking-widest">Avg Heart Rate</span>
               <span className="text-neon-green font-mono font-bold">72 BPM</span>
             </div>
           </div>
@@ -234,17 +234,17 @@ export default function PatientDashboard() {
             {[
               { day: 'Mon', type: 'Cardio', status: 'Completed', color: 'bg-neon-green' },
               { day: 'Tue', type: 'Yoga', status: 'Completed', color: 'bg-neon-green' },
-              { day: 'Wed', type: 'Strength', status: 'Pending', color: 'bg-white/20' },
-              { day: 'Thu', type: 'Cardio', status: 'Upcoming', color: 'bg-white/10' },
+              { day: 'Wed', type: 'Strength', status: 'Pending', color: 'bg-muted-foreground' },
+              { day: 'Thu', type: 'Cardio', status: 'Upcoming', color: 'bg-muted' },
             ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+              <div key={i} className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/5 flex flex-col items-center justify-center">
-                    <span className="text-[10px] font-bold text-white/40 uppercase">{item.day}</span>
+                  <div className="w-12 h-12 rounded-xl bg-muted flex flex-col items-center justify-center">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.day}</span>
                   </div>
                   <div>
                     <p className="text-sm font-bold">{item.type}</p>
-                    <p className="text-[10px] text-white/40 uppercase tracking-widest">{item.status}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{item.status}</p>
                   </div>
                 </div>
                 <div className={`w-2 h-2 rounded-full ${item.color}`} />
@@ -267,13 +267,13 @@ export default function PatientDashboard() {
               { icon: Shield, text: 'AI Risk Assessment updated', time: '5h ago', color: 'text-neon-purple', show: user?.settings?.alerts },
               { icon: Activity, text: 'Workout reminder: Time to exercise!', time: 'Now', color: 'text-neon-green', show: user?.settings?.reminders },
             ].filter(i => i.show).map((item, i) => (
-              <div key={i} className="flex items-start gap-4 p-4 hover:bg-white/5 rounded-2xl transition-all cursor-pointer">
-                <div className={`p-2 rounded-lg bg-white/5 ${item.color}`}>
+              <div key={i} className="flex items-start gap-4 p-4 hover:bg-muted/50 rounded-2xl transition-all cursor-pointer">
+                <div className={`p-2 rounded-lg bg-muted ${item.color}`}>
                   <item.icon className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">{item.text}</p>
-                  <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">{item.time}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">{item.time}</p>
                 </div>
               </div>
             ))}

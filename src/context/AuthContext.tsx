@@ -1,4 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, isFirebaseConfigured } from '../lib/firebase';
 
 interface User {
   id: string;
@@ -11,6 +14,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  loading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
   updateSettings: (settings: any) => void;
@@ -24,6 +28,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return saved ? JSON.parse(saved) : null;
   });
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Firebase Auth Listener
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // If logged in via Firebase, fetch user data from Firestore
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const userData = { id: firebaseUser.uid, ...userDoc.data() } as User;
+            setUser(userData);
+            setToken(await firebaseUser.getIdToken());
+          }
+        } catch (error) {
+          console.error("Firebase Auth Error:", error);
+        }
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
@@ -32,7 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user', JSON.stringify(newUser));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await auth.signOut();
+    } catch (e) {
+      console.error("Firebase SignOut Error", e);
+    }
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');
@@ -46,6 +78,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user', JSON.stringify(updatedUser));
     
     try {
+      // Sync with Firebase if available
+      if (auth.currentUser) {
+        // Update Firestore logic here if needed
+      }
+      
+      // Keep legacy API sync for now
       await fetch(`/api/settings/${user.role}/${user.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, updateSettings }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, updateSettings }}>
       {children}
     </AuthContext.Provider>
   );

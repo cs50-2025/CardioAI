@@ -34,12 +34,12 @@ export default function SettingsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-display font-bold">{t('settings')}</h1>
-          <p className="text-white/40 text-sm mt-1">Manage your account preferences and system configuration.</p>
+          <p className="text-muted-foreground text-sm mt-1">Manage your account preferences and system configuration.</p>
         </div>
         <button 
           onClick={handleSave}
           disabled={loading}
-          className="bg-neon-blue text-black font-bold px-8 py-3 rounded-xl flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50"
+          className="bg-neon-blue text-primary-foreground font-bold px-8 py-3 rounded-xl flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50"
         >
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
           {t('save')}
@@ -56,32 +56,32 @@ export default function SettingsPage() {
           
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/5 rounded-lg"><Moon className="w-4 h-4 text-white/60" /></div>
+              <div className="p-2 bg-muted/30 rounded-lg"><Moon className="w-4 h-4 text-muted-foreground" /></div>
               <div>
                 <p className="text-sm font-bold">{t('darkMode')}</p>
-                <p className="text-[10px] text-white/40 uppercase tracking-widest">System-wide dark theme</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">System-wide dark theme</p>
               </div>
             </div>
             <button 
               onClick={() => toggle('darkMode')}
-              className={`w-12 h-6 rounded-full transition-all relative ${localSettings.darkMode ? 'bg-neon-blue' : 'bg-white/10'}`}
+              className={`w-12 h-6 rounded-full transition-all relative ${localSettings.darkMode ? 'bg-neon-blue' : 'bg-muted/50'}`}
             >
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${localSettings.darkMode ? 'left-7' : 'left-1'}`} />
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-background transition-all ${localSettings.darkMode ? 'left-7' : 'left-1'}`} />
             </button>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/5 rounded-lg"><Globe className="w-4 h-4 text-white/60" /></div>
+              <div className="p-2 bg-muted/30 rounded-lg"><Globe className="w-4 h-4 text-muted-foreground" /></div>
               <div>
                 <p className="text-sm font-bold">{t('language')}</p>
-                <p className="text-[10px] text-white/40 uppercase tracking-widest">Interface language</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Interface language</p>
               </div>
             </div>
             <select 
               value={localSettings.language}
               onChange={(e) => setLocalSettings({...localSettings, language: e.target.value})}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-neon-blue/50"
+              className="bg-muted/30 border border-border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-neon-blue/50"
             >
               <option value="en">English</option>
               <option value="es">Español</option>
@@ -99,18 +99,17 @@ export default function SettingsPage() {
           {[
             { key: 'notifications', label: t('notifications'), sub: 'Push notifications for messages' },
             { key: 'alerts', label: t('alerts'), sub: 'Critical health alerts' },
-            { key: 'reminders', label: t('reminders'), sub: 'Workout and medication reminders' },
           ].map((item) => (
             <div key={item.key} className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold">{item.label}</p>
-                <p className="text-[10px] text-white/40 uppercase tracking-widest">{item.sub}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{item.sub}</p>
               </div>
               <button 
                 onClick={() => toggle(item.key)}
-                className={`w-12 h-6 rounded-full transition-all relative ${localSettings[item.key] ? 'bg-neon-purple' : 'bg-white/10'}`}
+                className={`w-12 h-6 rounded-full transition-all relative ${localSettings[item.key] ? 'bg-neon-purple' : 'bg-muted/50'}`}
               >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${localSettings[item.key] ? 'left-7' : 'left-1'}`} />
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-background transition-all ${localSettings[item.key] ? 'left-7' : 'left-1'}`} />
               </button>
             </div>
           ))}
@@ -124,13 +123,13 @@ export default function SettingsPage() {
           </h3>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/5 rounded-lg"><Smartphone className="w-4 h-4 text-white/60" /></div>
+              <div className="p-2 bg-muted/30 rounded-lg"><Smartphone className="w-4 h-4 text-muted-foreground" /></div>
               <div>
                 <p className="text-sm font-bold">Two-Factor Auth</p>
-                <p className="text-[10px] text-white/40 uppercase tracking-widest">Enhanced account security</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Enhanced account security</p>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Disabled</span>
+            <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">Disabled</span>
           </div>
         </div>
 
@@ -143,13 +142,13 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold">High Contrast</p>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest">Improve visual clarity</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Improve visual clarity</p>
             </div>
             <button 
               onClick={() => toggle('accessibility')}
-              className={`w-12 h-6 rounded-full transition-all relative ${localSettings.accessibility ? 'bg-neon-pink' : 'bg-white/10'}`}
+              className={`w-12 h-6 rounded-full transition-all relative ${localSettings.accessibility ? 'bg-neon-pink' : 'bg-muted/50'}`}
             >
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${localSettings.accessibility ? 'left-7' : 'left-1'}`} />
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-background transition-all ${localSettings.accessibility ? 'left-7' : 'left-1'}`} />
             </button>
           </div>
         </div>

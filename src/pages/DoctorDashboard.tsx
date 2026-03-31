@@ -4,13 +4,17 @@ import { useTranslation } from '../utils/i18n';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, Search, UserPlus, Trash2, Video, MessageSquare, 
-  Activity, Heart, Droplets, Thermometer, User, ChevronRight, Loader2, X, Play, Bell, Users
+  Activity, Heart, Droplets, Thermometer, User, ChevronRight, Loader2, X, Play, Bell, Users, ChevronDown
 } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, onSnapshot, orderBy } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { t } = useTranslation(user?.settings?.language || 'en');
   const [patients, setPatients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,18 +53,28 @@ export default function DoctorDashboard() {
 
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [patientWorkouts, setPatientWorkouts] = useState<any[]>([]);
-
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [isRiskExpanded, setIsRiskExpanded] = useState(false);
 
   useEffect(() => {
-    fetchPatients();
+    if (!user?.id) return;
+
+    const q = query(collection(db, 'users'), where('role', '==', 'patient'), where('doctorId', '==', user.id));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const patientList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setPatients(patientList);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [user?.id]);
 
   const fetchWorkouts = async (patientId: string) => {
     try {
-      const res = await fetch(`/api/patients/${patientId}/workouts`);
-      const data = await res.json();
-      setPatientWorkouts(data);
+      const q = query(collection(db, 'logs'), where('patientId', '==', patientId), orderBy('timestamp', 'desc'));
+      const snapshot = await getDocs(q);
+      const logs = snapshot.docs.map(doc => doc.data());
+      setPatientWorkouts(logs);
     } catch (e) {
       console.error(e);
     }
@@ -71,44 +85,35 @@ export default function DoctorDashboard() {
     fetchWorkouts(patient.id);
   };
 
-  const fetchPatients = async () => {
-    try {
-      const res = await fetch(`/api/doctors/${user?.id}/patients`);
-      const data = await res.json();
-      setPatients(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('/api/patients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newPatient, doctorId: user?.id })
+      const patientId = "P" + Math.floor(Math.random() * 1000000);
+      const patientData = {
+        ...newPatient,
+        id: patientId,
+        doctorId: user?.id,
+        role: 'patient',
+        createdAt: new Date().toISOString(),
+        risk: Math.floor(Math.random() * 100)
+      };
+
+      // In a real app, you'd create an auth user too, but for this demo 
+      // we'll just store the patient profile in Firestore.
+      await addDoc(collection(db, 'users'), patientData);
+      
+      setShowAddModal(false);
+      setNewPatient({ 
+        name: '', age: '', heartRate: '', bloodPressure: '', cholesterol: '', spo2: '', difficulty: 'Medium',
+        medications: [] 
       });
-      if (res.ok) {
-        setShowAddModal(false);
-        const resetPatient = { 
-          name: '', age: '', heartRate: '', bloodPressure: '', cholesterol: '', spo2: '', difficulty: 'Medium',
-          medications: [] 
-        };
-        setNewPatient(resetPatient);
-        localStorage.removeItem('doctor_new_patient_draft');
-        fetchPatients();
-        alert("Patient registered successfully!");
-      } else {
-        const data = await res.json();
-        alert(data.error || "Failed to register patient");
-      }
+      localStorage.removeItem('doctor_new_patient_draft');
+      alert("Patient registered successfully!");
+      navigate('/patients');
     } catch (e) {
       console.error(e);
-      alert("Connection error. Please try again.");
+      alert("Failed to register patient");
     } finally {
       setLoading(false);
     }
@@ -117,11 +122,8 @@ export default function DoctorDashboard() {
   const handleDeletePatient = async (id: string) => {
     if (!confirm(t('confirmDelete'))) return;
     try {
-      const res = await fetch(`/api/patients/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setPatients(prev => prev.filter(p => p.id !== id));
-        if (selectedPatient?.id === id) setSelectedPatient(null);
-      }
+      await deleteDoc(doc(db, 'users', id));
+      if (selectedPatient?.id === id) setSelectedPatient(null);
     } catch (e) {
       console.error(e);
     }
@@ -147,7 +149,7 @@ export default function DoctorDashboard() {
             className="glass p-6 rounded-2xl border-l-4 border-l-neon-blue"
           >
             <div className="flex justify-between items-start mb-4">
-              <p className="text-sm text-white/40 font-medium uppercase tracking-wider">{stat.label}</p>
+              <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{stat.label}</p>
               <stat.icon className={`w-5 h-5 ${stat.color}`} />
             </div>
             <p className="text-3xl font-display font-bold">{stat.value}</p>
@@ -158,18 +160,18 @@ export default function DoctorDashboard() {
       {/* Patients Header */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input 
             type="text" 
             placeholder="Search patients..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-neon-blue/50 transition-all"
+            className="w-full bg-muted/30 border border-border rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-neon-blue/50 transition-all"
           />
         </div>
         <button 
           onClick={() => setShowAddModal(true)}
-          className="w-full md:w-auto bg-neon-blue text-black font-bold px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform"
+          className="w-full md:w-auto bg-neon-blue text-primary-foreground font-bold px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform"
         >
           <Plus className="w-5 h-5" />
           {t('addPatient')}
@@ -191,21 +193,21 @@ export default function DoctorDashboard() {
             >
               <div className="flex items-start justify-between mb-6">
                 <div className="flex gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-xl font-bold text-neon-blue">
+                  <div className="w-14 h-14 rounded-2xl bg-muted/30 border border-border flex items-center justify-center text-xl font-bold text-neon-blue">
                     {patient.name[0]}
                   </div>
                   <div>
                     <h3 className="text-lg font-bold">{patient.name}</h3>
-                    <p className="text-xs text-white/40 font-mono uppercase tracking-widest">{patient.id}</p>
+                    <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">{patient.id}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="p-2 bg-white/5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                  <button className="p-2 bg-muted/30 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
                     <Video className="w-5 h-5" />
                   </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleDeletePatient(patient.id); }}
-                    className="p-2 bg-white/5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                    className="p-2 bg-muted/30 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-all"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
@@ -219,20 +221,20 @@ export default function DoctorDashboard() {
                   { label: 'SPO2', value: patient.spo2 + '%', icon: Droplets, color: 'text-neon-green' },
                   { label: 'CHOL', value: patient.cholesterol, icon: Activity, color: 'text-neon-purple' },
                 ].map((stat, i) => (
-                  <div key={i} className="bg-white/5 rounded-xl p-3 border border-white/5">
+                  <div key={i} className="bg-muted/30 rounded-xl p-3 border border-border/50">
                     <div className="flex items-center gap-2 mb-1">
                       <stat.icon className={`w-3 h-3 ${stat.color}`} />
-                      <span className="text-[10px] text-white/40 font-bold uppercase">{stat.label}</span>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase">{stat.label}</span>
                     </div>
                     <p className="text-sm font-bold">{stat.value}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-white/5">
+              <div className="flex items-center justify-between pt-4 border-t border-border/50">
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${patient.risk > 70 ? 'bg-red-500' : 'bg-neon-green'} animate-pulse`}></span>
-                  <span className="text-xs font-medium text-white/60">Risk: {patient.risk || '45'}%</span>
+                  <span className="text-xs font-medium text-muted-foreground">Risk: {patient.risk || '45'}%</span>
                 </div>
                 <button className="text-xs font-bold text-neon-blue flex items-center gap-1 hover:underline">
                   View Full Report <ChevronRight className="w-3 h-3" />
@@ -252,7 +254,7 @@ export default function DoctorDashboard() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedPatient(null)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-background/90 backdrop-blur-md"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -267,10 +269,10 @@ export default function DoctorDashboard() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-display font-bold">{selectedPatient.name}</h2>
-                    <p className="text-sm text-white/40 uppercase tracking-widest">Patient Profile • {selectedPatient.id}</p>
+                    <p className="text-sm text-muted-foreground uppercase tracking-widest">Patient Profile • {selectedPatient.id}</p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedPatient(null)} className="p-2 text-white/40 hover:text-white">
+                <button onClick={() => setSelectedPatient(null)} className="p-2 text-muted-foreground hover:text-foreground">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -287,7 +289,7 @@ export default function DoctorDashboard() {
                       <div className="mb-6 space-y-2">
                         <div className="flex justify-between items-center">
                           <p className="text-xs font-bold text-neon-blue uppercase tracking-widest">Video Review</p>
-                          <button onClick={() => setSelectedVideo(null)} className="text-[10px] text-white/40 hover:text-white uppercase font-bold">Close Player</button>
+                          <button onClick={() => setSelectedVideo(null)} className="text-[10px] text-muted-foreground hover:text-foreground uppercase font-bold">Close Player</button>
                         </div>
                         <VideoPlayer src={selectedVideo} />
                       </div>
@@ -295,7 +297,7 @@ export default function DoctorDashboard() {
 
                     <div className="space-y-3">
                       {patientWorkouts.length > 0 ? patientWorkouts.map((w, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                        <div key={i} className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-border/50">
                           <div className="flex items-center gap-4">
                             <div className={`p-2 ${w.logType === 'medication' ? 'bg-neon-purple/20' : 'bg-neon-green/20'} rounded-lg`}>
                               {w.logType === 'medication' ? (
@@ -306,7 +308,7 @@ export default function DoctorDashboard() {
                             </div>
                             <div>
                               <p className="text-sm font-bold">{w.type} {w.logType === 'medication' ? 'Taken' : 'Session'}</p>
-                              <p className="text-[10px] text-white/40 uppercase tracking-widest">{new Date(w.timestamp).toLocaleString()}</p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{new Date(w.timestamp).toLocaleString()}</p>
                             </div>
                           </div>
                           {w.video_url && (
@@ -319,7 +321,7 @@ export default function DoctorDashboard() {
                           )}
                         </div>
                       )) : (
-                        <p className="text-sm text-white/20 text-center py-8">No workouts recorded yet.</p>
+                        <p className="text-sm text-muted-foreground/50 text-center py-8">No workouts recorded yet.</p>
                       )}
                     </div>
                   </div>
@@ -327,25 +329,71 @@ export default function DoctorDashboard() {
 
                 <div className="space-y-6">
                   <div className="glass p-6 rounded-2xl border-l-4 border-l-red-400">
-                    <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-4">Health Summary</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">Health Summary</h3>
                     <div className="space-y-4">
                       <div className="flex justify-between">
-                        <span className="text-xs text-white/40">Risk Score</span>
+                        <span className="text-xs text-muted-foreground">Risk Score</span>
                         <span className="text-sm font-bold text-red-400">72%</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-xs text-white/40">Difficulty</span>
+                        <span className="text-xs text-muted-foreground">Difficulty</span>
                         <span className="text-sm font-bold text-neon-blue">{selectedPatient.difficulty}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-xs text-white/40">Age</span>
+                        <span className="text-xs text-muted-foreground">Age</span>
                         <span className="text-sm font-bold">{selectedPatient.age}</span>
                       </div>
                     </div>
                   </div>
+
+                  <div className="glass p-6 rounded-2xl border-l-4 border-l-neon-blue">
+                    <button 
+                      onClick={() => setIsRiskExpanded(!isRiskExpanded)}
+                      className="w-full flex justify-between items-center"
+                    >
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">AI Risk Prediction</h3>
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isRiskExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {isRiskExpanded && (
+                        <motion.div 
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-4 space-y-4">
+                            <div>
+                              <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Contributing Factors</p>
+                              <ul className="space-y-1">
+                                <li className="text-xs text-foreground/80 flex items-center gap-2">
+                                  <div className="w-1 h-1 rounded-full bg-red-400" /> High Cholesterol levels
+                                </li>
+                                <li className="text-xs text-foreground/80 flex items-center gap-2">
+                                  <div className="w-1 h-1 rounded-full bg-red-400" /> Irregular blood pressure
+                                </li>
+                              </ul>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Actionable Insights</p>
+                              <ul className="space-y-1">
+                                <li className="text-xs text-foreground/80 flex items-center gap-2">
+                                  <div className="w-1 h-1 rounded-full bg-neon-green" /> Increase daily activity to 30 mins
+                                </li>
+                                <li className="text-xs text-foreground/80 flex items-center gap-2">
+                                  <div className="w-1 h-1 rounded-full bg-neon-green" /> Reduce sodium intake
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                   <button 
                     onClick={() => { setSelectedPatient(null); /* Navigate to messages */ }}
-                    className="w-full bg-white/5 border border-white/10 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
+                    className="w-full bg-muted/30 border border-border text-foreground font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-muted/50 transition-all"
                   >
                     <MessageSquare className="w-5 h-5" />
                     Send Message
@@ -366,7 +414,7 @@ export default function DoctorDashboard() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowAddModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-background/90 backdrop-blur-md"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -379,70 +427,70 @@ export default function DoctorDashboard() {
                   <UserPlus className="text-neon-blue" />
                   Register New Patient
                 </h2>
-                <button onClick={() => setShowAddModal(false)} className="p-2 text-white/40 hover:text-white">
+                <button onClick={() => setShowAddModal(false)} className="p-2 text-muted-foreground hover:text-foreground">
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
               <form onSubmit={handleAddPatient} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/40 uppercase ml-1">Full Name</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase ml-1">Full Name</label>
                   <input 
                     required
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
+                    className="w-full bg-muted/30 border border-border rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
                     value={newPatient.name}
                     onChange={(e) => setNewPatient({...newPatient, name: e.target.value})}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/40 uppercase ml-1">Age</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase ml-1">Age</label>
                   <input 
                     type="number" required
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
+                    className="w-full bg-muted/30 border border-border rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
                     value={newPatient.age}
                     onChange={(e) => setNewPatient({...newPatient, age: e.target.value})}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/40 uppercase ml-1">Heart Rate (bpm)</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase ml-1">Heart Rate (bpm)</label>
                   <input 
                     type="number" required
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
+                    className="w-full bg-muted/30 border border-border rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
                     value={newPatient.heartRate}
                     onChange={(e) => setNewPatient({...newPatient, heartRate: e.target.value})}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/40 uppercase ml-1">Blood Pressure (mmHg)</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase ml-1">Blood Pressure (mmHg)</label>
                   <input 
                     placeholder="120/80" required
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
+                    className="w-full bg-muted/30 border border-border rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
                     value={newPatient.bloodPressure}
                     onChange={(e) => setNewPatient({...newPatient, bloodPressure: e.target.value})}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/40 uppercase ml-1">Cholesterol (mg/dL)</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase ml-1">Cholesterol (mg/dL)</label>
                   <input 
                     type="number" required
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
+                    className="w-full bg-muted/30 border border-border rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
                     value={newPatient.cholesterol}
                     onChange={(e) => setNewPatient({...newPatient, cholesterol: e.target.value})}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/40 uppercase ml-1">SPO2 (%)</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase ml-1">SPO2 (%)</label>
                   <input 
                     type="number" required
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
+                    className="w-full bg-muted/30 border border-border rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
                     value={newPatient.spo2}
                     onChange={(e) => setNewPatient({...newPatient, spo2: e.target.value})}
                   />
                 </div>
                 <div className="md:col-span-2 space-y-1">
-                  <label className="text-xs font-bold text-white/40 uppercase ml-1">Fitness Difficulty</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase ml-1">Fitness Difficulty</label>
                   <select 
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
+                    className="w-full bg-muted/30 border border-border rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
                     value={newPatient.difficulty}
                     onChange={(e) => setNewPatient({...newPatient, difficulty: e.target.value})}
                   >
@@ -453,24 +501,24 @@ export default function DoctorDashboard() {
                 </div>
 
                 <div className="md:col-span-2 space-y-4">
-                  <label className="text-xs font-bold text-white/40 uppercase ml-1">Medications</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase ml-1">Medications</label>
                   <div className="flex gap-2">
                     <input 
                       placeholder="Medication Name"
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
+                      className="flex-1 bg-muted/30 border border-border rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
                       value={medInput.name}
                       onChange={(e) => setMedInput({...medInput, name: e.target.value})}
                     />
                     <input 
                       type="time"
-                      className="w-32 bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
+                      className="w-32 bg-muted/30 border border-border rounded-xl py-3 px-4 focus:outline-none focus:border-neon-blue/50"
                       value={medInput.time}
                       onChange={(e) => setMedInput({...medInput, time: e.target.value})}
                     />
                     <button 
                       type="button"
                       onClick={addMedication}
-                      className="bg-neon-blue text-black font-bold px-4 rounded-xl"
+                      className="bg-neon-blue text-primary-foreground font-bold px-4 rounded-xl"
                     >
                       Add
                     </button>
@@ -478,11 +526,11 @@ export default function DoctorDashboard() {
                   
                   <div className="space-y-2">
                     {newPatient.medications.map((med, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
+                      <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border border-border">
                         <div className="flex items-center gap-3">
                           <Droplets className="w-4 h-4 text-neon-blue" />
                           <span className="text-sm font-bold">{med.name}</span>
-                          <span className="text-xs text-white/40">at {med.time}</span>
+                          <span className="text-xs text-muted-foreground">at {med.time}</span>
                         </div>
                         <button 
                           type="button"
@@ -499,7 +547,7 @@ export default function DoctorDashboard() {
                 <div className="md:col-span-2 pt-4">
                   <button 
                     disabled={loading}
-                    className="w-full bg-neon-blue text-black font-bold py-4 rounded-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                    className="w-full bg-neon-blue text-primary-foreground font-bold py-4 rounded-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Register Patient'}
                   </button>

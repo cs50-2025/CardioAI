@@ -21,6 +21,7 @@ export default function VideoPlayer({ src }: { src: string }) {
           const parts = src.split(',');
           const mime = parts[0].match(/:(.*?);/)?.[1] || 'video/webm';
           const b64Data = parts[1];
+          if (!b64Data) throw new Error("Invalid base64 data");
           
           const byteCharacters = atob(b64Data);
           const byteArrays = [];
@@ -95,8 +96,20 @@ export default function VideoPlayer({ src }: { src: string }) {
     }
   };
 
+  const toggleFullScreen = () => {
+    if (videoRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        videoRef.current.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+      }
+    }
+  };
+
   return (
-    <div className="relative group glass rounded-2xl overflow-hidden bg-black">
+    <div className="relative group glass rounded-2xl overflow-hidden bg-background">
       {objectUrl ? (
         <video 
           key={objectUrl}
@@ -109,7 +122,7 @@ export default function VideoPlayer({ src }: { src: string }) {
           playsInline
         />
       ) : (
-        <div className="w-full aspect-video flex items-center justify-center text-white/20">
+        <div className="w-full aspect-video flex items-center justify-center text-muted-foreground/50">
           <Settings className="w-8 h-8 animate-spin" />
         </div>
       )}
@@ -117,7 +130,7 @@ export default function VideoPlayer({ src }: { src: string }) {
       {/* Controls Overlay */}
       <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
         {/* Progress Bar */}
-        <div className="w-full h-1 bg-white/20 rounded-full mb-4 cursor-pointer relative">
+        <div className="w-full h-1 bg-muted rounded-full mb-4 cursor-pointer relative">
           <div 
             className="absolute inset-y-0 left-0 bg-neon-blue rounded-full" 
             style={{ width: `${progress}%` }}
@@ -126,13 +139,13 @@ export default function VideoPlayer({ src }: { src: string }) {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => seek(-10)} className="text-white/60 hover:text-white transition-all">
+            <button onClick={() => seek(-10)} className="text-muted-foreground hover:text-foreground transition-all">
               <Rewind className="w-5 h-5" />
             </button>
-            <button onClick={togglePlay} className="p-2 bg-neon-blue text-black rounded-full hover:scale-110 transition-transform">
+            <button onClick={togglePlay} className="p-2 bg-neon-blue text-primary-foreground rounded-full hover:scale-110 transition-transform">
               {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
             </button>
-            <button onClick={() => seek(10)} className="text-white/60 hover:text-white transition-all">
+            <button onClick={() => seek(10)} className="text-muted-foreground hover:text-foreground transition-all">
               <FastForward className="w-5 h-5" />
             </button>
             
@@ -142,7 +155,7 @@ export default function VideoPlayer({ src }: { src: string }) {
                   key={speed}
                   onClick={() => changeSpeed(speed)}
                   className={`text-[10px] font-bold px-2 py-1 rounded border ${
-                    playbackRate === speed ? 'bg-neon-blue border-neon-blue text-black' : 'border-white/20 text-white/60'
+                    playbackRate === speed ? 'bg-neon-blue border-neon-blue text-primary-foreground' : 'border-border text-muted-foreground'
                   }`}
                 >
                   {speed}x
@@ -152,8 +165,10 @@ export default function VideoPlayer({ src }: { src: string }) {
           </div>
 
           <div className="flex items-center gap-4">
-            <Volume2 className="w-5 h-5 text-white/60" />
-            <Maximize className="w-5 h-5 text-white/60" />
+            <Volume2 className="w-5 h-5 text-muted-foreground" />
+            <button onClick={toggleFullScreen} className="text-muted-foreground hover:text-foreground transition-all">
+              <Maximize className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>

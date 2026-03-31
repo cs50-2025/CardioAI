@@ -7,6 +7,8 @@ import {
   CheckCircle2, Loader2, Sparkles,
   ArrowRight, Heart, Camera
 } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 export default function MeditationPage() {
   const { user } = useAuth();
@@ -114,17 +116,15 @@ export default function MeditationPage() {
       reader.onloadend = async () => {
         const base64data = reader.result;
         try {
-          await fetch('/api/workouts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              patientId: user?.id,
-              type: 'Meditation',
-              videoUrl: base64data
-            })
+          await addDoc(collection(db, 'logs'), {
+            patientId: user?.id,
+            type: 'Meditation',
+            logType: 'meditation',
+            timestamp: new Date().toISOString(),
+            video_url: base64data
           });
         } catch (e) {
-          console.error(e);
+          console.error("Failed to save meditation log", e);
         } finally {
           setLoading(false);
         }
@@ -147,21 +147,21 @@ export default function MeditationPage() {
     <div className="max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[calc(100vh-160px)] relative">
       {/* Background Glow */}
       <div className={`absolute inset-0 transition-all duration-1000 blur-[120px] rounded-full opacity-20 ${
-        phase === 'inhale' ? 'bg-neon-blue' : phase === 'exhale' ? 'bg-neon-purple' : 'bg-white'
+        phase === 'inhale' ? 'bg-neon-blue' : phase === 'exhale' ? 'bg-neon-purple' : 'bg-primary'
       }`} />
 
       <div className="text-center mb-12 relative z-10">
         <h1 className="text-4xl font-display font-bold mb-2">Mindful <span className="text-neon-blue">Breathing</span></h1>
-        <p className="text-white/40 uppercase tracking-[0.3em] text-xs font-bold">AI-Guided Cardiovascular Relaxation</p>
+        <p className="text-muted-foreground uppercase tracking-[0.3em] text-xs font-bold">AI-Guided Cardiovascular Relaxation</p>
       </div>
 
       {/* Video Preview */}
       <div className="absolute top-4 right-4 w-48 aspect-video glass rounded-2xl overflow-hidden z-20 border-neon-blue/30 shadow-lg">
         <video ref={videoRef} muted playsInline className="w-full h-full object-cover mirror" />
         {status === 'active' && (
-          <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-full">
+          <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-background/80 px-2 py-1 rounded-full">
             <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-[8px] font-bold text-white uppercase">Rec</span>
+            <span className="text-[8px] font-bold text-foreground uppercase">Rec</span>
           </div>
         )}
       </div>
@@ -180,7 +180,7 @@ export default function MeditationPage() {
             className={`absolute inset-0 rounded-full border-2 ${
               phase === 'inhale' ? 'border-neon-blue shadow-[0_0_50px_rgba(0,242,255,0.3)]' : 
               phase === 'exhale' ? 'border-neon-purple shadow-[0_0_50px_rgba(188,19,254,0.3)]' : 
-              'border-white/20'
+              'border-border'
             }`}
           />
         </AnimatePresence>
@@ -194,7 +194,7 @@ export default function MeditationPage() {
           >
             {status === 'active' ? phase.replace('-', ' ') : 'Ready?'}
           </motion.p>
-          <p className="text-4xl font-mono font-bold text-white/60">{formatTime(timeLeft)}</p>
+          <p className="text-4xl font-mono font-bold text-muted-foreground">{formatTime(timeLeft)}</p>
         </div>
       </div>
 
@@ -202,7 +202,7 @@ export default function MeditationPage() {
         {status === 'idle' ? (
           <button 
             onClick={() => setStatus('active')}
-            className="bg-neon-blue text-black font-bold px-12 py-4 rounded-2xl flex items-center gap-3 hover:scale-105 transition-transform shadow-[0_0_30px_rgba(0,242,255,0.3)]"
+            className="bg-neon-blue text-primary-foreground font-bold px-12 py-4 rounded-2xl flex items-center gap-3 hover:scale-105 transition-transform shadow-[0_0_30px_rgba(0,242,255,0.3)]"
           >
             <Play className="w-5 h-5 fill-current" />
             Begin Session
@@ -210,7 +210,7 @@ export default function MeditationPage() {
         ) : status === 'active' ? (
           <button 
             onClick={() => setStatus('idle')}
-            className="glass px-12 py-4 rounded-2xl flex items-center gap-3 hover:bg-white/10 transition-all"
+            className="glass px-12 py-4 rounded-2xl flex items-center gap-3 hover:bg-muted/50 transition-all"
           >
             <Pause className="w-5 h-5 fill-current" />
             Pause
@@ -226,7 +226,7 @@ export default function MeditationPage() {
         ].map((stat, i) => (
           <div key={i} className="text-center">
             <stat.icon className={`w-5 h-5 mx-auto mb-2 ${stat.color}`} />
-            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1">{stat.label}</p>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">{stat.label}</p>
             <p className="text-sm font-bold">{stat.value}</p>
           </div>
         ))}
@@ -239,7 +239,7 @@ export default function MeditationPage() {
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+              className="absolute inset-0 bg-background/95 backdrop-blur-xl"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -250,12 +250,12 @@ export default function MeditationPage() {
                 <CheckCircle2 className="w-12 h-12 text-neon-green" />
               </div>
               <h2 className="text-3xl font-display font-bold mb-2">Session Complete</h2>
-              <p className="text-white/40 mb-8">Your cardiovascular system is now more relaxed. Great job!</p>
+              <p className="text-muted-foreground mb-8">Your cardiovascular system is now more relaxed. Great job!</p>
               
               <div className="space-y-4">
                 <button 
                   onClick={() => window.location.href = '/'}
-                  className="w-full bg-neon-blue text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:scale-105 transition-transform"
+                  className="w-full bg-neon-blue text-primary-foreground font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:scale-105 transition-transform"
                 >
                   Back to Dashboard
                   <ArrowRight className="w-4 h-4" />

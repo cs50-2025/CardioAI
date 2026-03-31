@@ -6,28 +6,75 @@
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   
-  --color-neon-blue: #00f2ff;
-  --color-neon-purple: #bc13fe;
-  --color-neon-pink: #ff00bd;
-  --color-neon-green: #39ff14;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  
+  --color-neon-blue: var(--primary);
+  --color-neon-purple: var(--secondary);
+  --color-neon-pink: var(--accent);
+  --color-neon-green: var(--success);
+
+  --animate-marquee: marquee 60s linear infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
 }
 
 @layer base {
+  :root {
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --border: #e2e8f0;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --primary: #2563eb;
+    --primary-foreground: #ffffff;
+    --secondary: #7c3aed;
+    --secondary-foreground: #ffffff;
+    --accent: #db2777;
+    --accent-foreground: #ffffff;
+    --success: #059669;
+    --success-foreground: #ffffff;
+  }
+
+  body.dark-mode {
+    --background: #020617;
+    --foreground: #f8fafc;
+    --card: #0f172a;
+    --card-foreground: #f8fafc;
+    --border: #1e293b;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --secondary: #8b5cf6;
+    --secondary-foreground: #ffffff;
+    --accent: #ec4899;
+    --accent-foreground: #ffffff;
+    --success: #10b981;
+    --success-foreground: #ffffff;
+  }
+
   body {
-    @apply bg-[#050505] text-white font-sans antialiased overflow-x-hidden transition-colors duration-300;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    body {
-      cursor: none;
-    }
-    a, button, [role="button"] {
-      cursor: none;
-    }
-  }
-
-  body.light-mode {
-    @apply bg-[#f8f9fa] text-[#1a1a1a];
+    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden transition-colors duration-300;
   }
 
   body.high-contrast {
@@ -36,28 +83,23 @@
 }
 
 .glass {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10 transition-all;
+  @apply bg-card text-card-foreground border border-border shadow-sm rounded-3xl transition-all duration-300;
 }
 
 .glass:hover {
-  @apply border-white/20 bg-white/10 -translate-y-1 shadow-[0_10px_30px_rgba(0,0,0,0.3)];
-}
-
-.light-mode .glass {
-  @apply bg-white/80 backdrop-blur-md border border-black/10 shadow-sm;
+  @apply shadow-md;
 }
 
 .glass-dark {
-  @apply bg-black/40 backdrop-blur-2xl border border-white/5;
+  @apply bg-card text-card-foreground border border-border rounded-3xl;
 }
 
-/* Menu should stay dark as requested */
 .sidebar-dark {
-  @apply bg-[#050505] text-white border-r border-white/10;
+  @apply bg-card text-card-foreground border-r border-border;
 }
 
 .high-contrast .neon-text {
-  @apply text-neon-blue drop-shadow-[0_0_12px_rgba(0,242,255,0.8)] font-bold;
+  @apply text-neon-blue font-bold;
 }
 
 .high-contrast .glass {
@@ -65,11 +107,11 @@
 }
 
 .neon-border {
-  @apply border border-neon-blue/30 shadow-[0_0_15px_rgba(0,242,255,0.1)];
+  @apply border border-neon-blue/30;
 }
 
 .neon-text {
-  @apply text-neon-blue drop-shadow-[0_0_8px_rgba(0,242,255,0.5)];
+  @apply text-neon-blue;
 }
 
 .animate-glow {
@@ -78,10 +120,10 @@
 
 @keyframes glow {
   from {
-    box-shadow: 0 0 5px #00f2ff, 0 0 10px #00f2ff;
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.2);
   }
   to {
-    box-shadow: 0 0 10px #00f2ff, 0 0 20px #00f2ff;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
   }
 }
 
