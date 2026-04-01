@@ -1,18 +1,26 @@
 import express from "express";
+import { createServer as createViteServer } from "vite";
+import { WebSocketServer, WebSocket } from "ws";
+import http from "http";
 import postgres from "postgres";
 import { config } from "dotenv";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
-import serverless from "serverless-http";
 
 config();
+
+if (!process.env.NETLIFY_DATABASE_URL) {
+  throw new Error("NETLIFY_DATABASE_URL environment variable is not defined. Please set it in the Settings menu.");
+}
+
+console.log("NETLIFY_DATABASE_URL is set, length:", process.env.NETLIFY_DATABASE_URL.length);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const sql = postgres(process.env.DATABASE_URL!);
+const sql = postgres(process.env.NETLIFY_DATABASE_URL);
 const JWT_SECRET = "cardio-ai-secret-key-2024";
 
 // Initialize Database
@@ -91,180 +99,244 @@ try {
   await sql`INSERT INTO doctors (id, name, password) VALUES ('SYSTEM', 'System', 'system-locked') ON CONFLICT (id) DO NOTHING`;
 } catch (e) {}
 
-const app = express();
+async function startServer() {
+  const app = express();
+  const server = http.createServer(app);
+  const wss = new WebSocketServer({ server });
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Auth Routes
-app.post("/api/auth/doctor/signup", async (req, res) => {
-  const { name, password } = req.body;
-  const trimmedName = name.trim();
-  const id = Math.random().toString(36).substr(2, 9);
-  const hashedPassword = await bcrypt.hash(password, 10);
-  try {
-    await sql`INSERT INTO doctors (id, name, password) VALUES (${id}, ${trimmedName}, ${hashedPassword})`;
-    const token = jwt.sign({ id, role: "doctor" }, JWT_SECRET);
-    res.json({ token, user: { id, name: trimmedName, role: "doctor" } });
-  } catch (e: any) {
-    if (e.code === '23505') { // Unique constraint violation
-      res.status(400).json({ error: "Username already exists" });
+  // WebSocket logic
+  const clients = new Map<string, WebSocket>();
+
+  wss.on("connection", (ws, req) => {
+    let userId: string | null = null;
+
+    ws.on("message", async (message) => {
+      const data = JSON.parse(message.toString());
+      if (data.type === "auth") {
+        userId = data.userId;
+        if (userId) clients.set(userId, ws);
+      } else if (data.type === "message") {
+        const { receiverId, content } = data;
+        if (userId) {
+          const [msgRecord] = await sql`INSERT INTO messages (sender_id, receiver_id, content) VALUES (${userId}, ${receiverId}, ${content}) RETURNING id`;
+          
+          const msg = {
+            id: msgRecord.id,
+            sender_id: userId,
+            receiver_id: receiverId,
+            content,
+            timestamp: new Date().toISOString(),
+            seen: 0
+          };
+
+          // Send to receiver if online
+          const receiverWs = clients.get(receiverId);
+          if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            receiverWs.send(JSON.stringify({ type: "message", message: msg }));
+          }
+          // Send back to sender for confirmation
+          ws.send(JSON.stringify({ type: "message_sent", message: msg }));
+        }
+      }
+    });
+
+    ws.on("close", () => {
+      if (userId) clients.delete(userId);
+    });
+  });
+
+  // Auth Routes
+  app.post("/api/auth/doctor/signup", async (req, res) => {
+    const { name, password } = req.body;
+    const trimmedName = name.trim();
+    const id = Math.random().toString(36).substr(2, 9);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+      await sql`INSERT INTO doctors (id, name, password) VALUES (${id}, ${trimmedName}, ${hashedPassword})`;
+      const token = jwt.sign({ id, role: "doctor" }, JWT_SECRET);
+      res.json({ token, user: { id, name: trimmedName, role: "doctor" } });
+    } catch (e: any) {
+      if (e.code === '23505') { // Unique constraint violation
+        res.status(400).json({ error: "Username already exists" });
+      } else {
+        res.status(400).json({ error: "Signup failed" });
+      }
+    }
+  });
+
+  app.post("/api/auth/doctor/login", async (req, res) => {
+    const { name, password } = req.body;
+    const trimmedName = name.trim();
+    const [doctor] = await sql`SELECT * FROM doctors WHERE name = ${trimmedName}`;
+    if (doctor && await bcrypt.compare(password, doctor.password)) {
+      const token = jwt.sign({ id: doctor.id, role: "doctor" }, JWT_SECRET);
+      res.json({ token, user: { id: doctor.id, name: doctor.name, role: "doctor", settings: JSON.parse(doctor.settings || '{}') } });
     } else {
+      res.status(401).json({ error: "Invalid credentials" });
+    }
+  });
+
+  app.post("/api/auth/patient/signup", async (req, res) => {
+    const { name, age, heartRate, bloodPressure, cholesterol, spo2, difficulty } = req.body;
+    const id = "P" + Math.floor(Math.random() * 1000000);
+    try {
+      await sql`
+        INSERT INTO patients (id, doctor_id, name, age, heart_rate, blood_pressure, cholesterol, spo2, difficulty)
+        VALUES (${id}, 'SYSTEM', ${name}, ${age || 0}, ${heartRate || 70}, ${bloodPressure || '120/80'}, ${cholesterol || 180}, ${spo2 || 98}, ${difficulty || 'Medium'})
+      `;
+      
+      const token = jwt.sign({ id, role: "patient" }, JWT_SECRET);
+      res.json({ token, user: { id, name, role: "patient", settings: {} } });
+    } catch (e: any) {
       res.status(400).json({ error: "Signup failed" });
     }
-  }
-});
+  });
 
-app.post("/api/auth/doctor/login", async (req, res) => {
-  const { name, password } = req.body;
-  const trimmedName = name.trim();
-  const [doctor] = await sql`SELECT * FROM doctors WHERE name = ${trimmedName}`;
-  if (doctor && await bcrypt.compare(password, doctor.password)) {
-    const token = jwt.sign({ id: doctor.id, role: "doctor" }, JWT_SECRET);
-    res.json({ token, user: { id: doctor.id, name: doctor.name, role: "doctor", settings: JSON.parse(doctor.settings || '{}') } });
-  } else {
-    res.status(401).json({ error: "Invalid credentials" });
-  }
-});
+  app.post("/api/auth/patient/login", async (req, res) => {
+    const { id } = req.body;
+    const [patient] = await sql`SELECT * FROM patients WHERE id = ${id}`;
+    if (patient) {
+      const token = jwt.sign({ id: patient.id, role: "patient" }, JWT_SECRET);
+      res.json({ 
+        token, 
+        user: { 
+          ...patient, 
+          role: "patient", 
+          settings: JSON.parse(patient.settings || '{}'),
+          medications: JSON.parse(patient.medications || '[]')
+        } 
+      });
+    } else {
+      res.status(401).json({ error: "Invalid Credentials" });
+    }
+  });
 
-app.post("/api/auth/patient/signup", async (req, res) => {
-  const { name, age, heartRate, bloodPressure, cholesterol, spo2, difficulty } = req.body;
-  const id = "P" + Math.floor(Math.random() * 1000000);
-  try {
-    await sql`
-      INSERT INTO patients (id, doctor_id, name, age, heart_rate, blood_pressure, cholesterol, spo2, difficulty)
-      VALUES (${id}, 'SYSTEM', ${name}, ${age || 0}, ${heartRate || 70}, ${bloodPressure || '120/80'}, ${cholesterol || 180}, ${spo2 || 98}, ${difficulty || 'Medium'})
-    `;
+  // Patient Management
+  app.post("/api/patients", async (req, res) => {
+    try {
+      const { doctorId, name, age, heartRate, bloodPressure, cholesterol, spo2, difficulty, medications } = req.body;
+      const id = "P" + Math.floor(Math.random() * 1000000);
+      await sql`
+        INSERT INTO patients (id, doctor_id, name, age, heart_rate, blood_pressure, cholesterol, spo2, difficulty, medications)
+        VALUES (${id}, ${doctorId}, ${name}, ${age}, ${heartRate}, ${bloodPressure}, ${cholesterol}, ${spo2}, ${difficulty}, ${JSON.stringify(medications || [])})
+      `;
+      res.json({ id });
+    } catch (e: any) {
+      console.error("Patient registration error:", e);
+      res.status(500).json({ error: e.message || "Failed to register patient" });
+    }
+  });
+
+  app.get("/api/doctors/:id/patients", async (req, res) => {
+    const patients = await sql`SELECT * FROM patients WHERE doctor_id = ${req.params.id}`;
+    res.json(patients.map((p: any) => ({ 
+      ...p, 
+      settings: JSON.parse(p.settings || '{}'),
+      medications: JSON.parse(p.medications || '[]')
+    })));
+  });
+
+  app.delete("/api/patients/:id", async (req, res) => {
+    await sql`DELETE FROM messages WHERE sender_id = ${req.params.id} OR receiver_id = ${req.params.id}`;
+    await sql`DELETE FROM workouts WHERE patient_id = ${req.params.id}`;
+    await sql`DELETE FROM notifications WHERE user_id = ${req.params.id}`;
+    await sql`DELETE FROM patients WHERE id = ${req.params.id}`;
+    res.json({ success: true });
+  });
+
+  // Settings
+  app.post("/api/settings/:role/:id", async (req, res) => {
+    const { role, id } = req.params;
+    const settings = JSON.stringify(req.body);
+    if (role === "doctor") {
+      await sql`UPDATE doctors SET settings = ${settings} WHERE id = ${id}`;
+    } else {
+      await sql`UPDATE patients SET settings = ${settings} WHERE id = ${id}`;
+    }
+    res.json({ success: true });
+  });
+
+  // Workouts
+  app.post("/api/workouts", async (req, res) => {
+    const { patientId, type, videoUrl } = req.body;
+    await sql`INSERT INTO workouts (patient_id, type, video_url) VALUES (${patientId}, ${type}, ${videoUrl})`;
     
-    const token = jwt.sign({ id, role: "patient" }, JWT_SECRET);
-    res.json({ token, user: { id, name, role: "patient", settings: {} } });
-  } catch (e: any) {
-    res.status(400).json({ error: "Signup failed" });
-  }
-});
+    // Notify doctor
+    const [patient] = await sql`SELECT * FROM patients WHERE id = ${patientId}`;
+    if (patient) {
+      await sql`INSERT INTO notifications (user_id, content, type) VALUES (${patient.doctor_id}, ${`Patient ${patient.name} completed a ${type} workout.`}, 'workout')`;
+    }
+    res.json({ success: true });
+  });
 
-app.post("/api/auth/patient/login", async (req, res) => {
-  const { id } = req.body;
-  const [patient] = await sql`SELECT * FROM patients WHERE id = ${id}`;
-  if (patient) {
-    const token = jwt.sign({ id: patient.id, role: "patient" }, JWT_SECRET);
-    res.json({ 
-      token, 
-      user: { 
-        ...patient, 
-        role: "patient", 
-        settings: JSON.parse(patient.settings || '{}'),
-        medications: JSON.parse(patient.medications || '[]')
-      } 
-    });
-  } else {
-    res.status(401).json({ error: "Invalid Credentials" });
-  }
-});
+  app.get("/api/patients/:id/workouts", async (req, res) => {
+    const workouts = await sql`SELECT * FROM workouts WHERE patient_id = ${req.params.id} ORDER BY timestamp DESC`;
+    const medLogs = await sql`SELECT * FROM medication_logs WHERE patient_id = ${req.params.id} ORDER BY timestamp DESC`;
+    
+    const combined = [
+      ...workouts.map(w => ({ ...w, logType: 'workout' })),
+      ...medLogs.map(m => ({ ...m, logType: 'medication', type: m.medication_name }))
+    ].sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    res.json(combined);
+  });
 
-// Patient Management
-app.post("/api/patients", async (req, res) => {
-  try {
-    const { doctorId, name, age, heartRate, bloodPressure, cholesterol, spo2, difficulty, medications } = req.body;
-    const id = "P" + Math.floor(Math.random() * 1000000);
-    await sql`
-      INSERT INTO patients (id, doctor_id, name, age, heart_rate, blood_pressure, cholesterol, spo2, difficulty, medications)
-      VALUES (${id}, ${doctorId}, ${name}, ${age}, ${heartRate}, ${bloodPressure}, ${cholesterol}, ${spo2}, ${difficulty}, ${JSON.stringify(medications || [])})
+  // Medication Logs
+  app.post("/api/medication-logs", async (req, res) => {
+    const { patientId, medicationName, videoUrl } = req.body;
+    await sql`INSERT INTO medication_logs (patient_id, medication_name, video_url) VALUES (${patientId}, ${medicationName}, ${videoUrl})`;
+    
+    // Notify doctor
+    const [patient] = await sql`SELECT * FROM patients WHERE id = ${patientId}`;
+    if (patient) {
+      await sql`INSERT INTO notifications (user_id, content, type) VALUES (${patient.doctor_id}, ${`Patient ${patient.name} took their medication: ${medicationName}.`}, 'medication')`;
+    }
+    res.json({ success: true });
+  });
+
+  // Notifications
+  app.get("/api/notifications/:userId", async (req, res) => {
+    const notifications = await sql`SELECT * FROM notifications WHERE user_id = ${req.params.userId} ORDER BY timestamp DESC`;
+    res.json(notifications);
+  });
+
+  app.post("/api/notifications/:id/read", async (req, res) => {
+    await sql`UPDATE notifications SET read = 1 WHERE id = ${req.params.id}`;
+    res.json({ success: true });
+  });
+
+  // Messages History
+  app.get("/api/messages/:u1/:u2", async (req, res) => {
+    const messages = await sql`
+      SELECT * FROM messages 
+      WHERE (sender_id = ${req.params.u1} AND receiver_id = ${req.params.u2}) 
+      OR (sender_id = ${req.params.u2} AND receiver_id = ${req.params.u1})
+      ORDER BY timestamp ASC
     `;
-    res.json({ id });
-  } catch (e: any) {
-    console.error("Patient registration error:", e);
-    res.status(500).json({ error: e.message || "Failed to register patient" });
-  }
-});
+    res.json(messages);
+  });
 
-app.get("/api/doctors/:id/patients", async (req, res) => {
-  const patients = await sql`SELECT * FROM patients WHERE doctor_id = ${req.params.id}`;
-  res.json(patients.map((p: any) => ({ 
-    ...p, 
-    settings: JSON.parse(p.settings || '{}'),
-    medications: JSON.parse(p.medications || '[]')
-  })));
-});
-
-app.delete("/api/patients/:id", async (req, res) => {
-  await sql`DELETE FROM messages WHERE sender_id = ${req.params.id} OR receiver_id = ${req.params.id}`;
-  await sql`DELETE FROM workouts WHERE patient_id = ${req.params.id}`;
-  await sql`DELETE FROM notifications WHERE user_id = ${req.params.id}`;
-  await sql`DELETE FROM patients WHERE id = ${req.params.id}`;
-  res.json({ success: true });
-});
-
-// Settings
-app.post("/api/settings/:role/:id", async (req, res) => {
-  const { role, id } = req.params;
-  const settings = JSON.stringify(req.body);
-  if (role === "doctor") {
-    await sql`UPDATE doctors SET settings = ${settings} WHERE id = ${id}`;
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
   } else {
-    await sql`UPDATE patients SET settings = ${settings} WHERE id = ${id}`;
+    app.use(express.static(path.join(__dirname, "dist")));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(__dirname, "dist", "index.html"));
+    });
   }
-  res.json({ success: true });
-});
 
-// Workouts
-app.post("/api/workouts", async (req, res) => {
-  const { patientId, type, videoUrl } = req.body;
-  await sql`INSERT INTO workouts (patient_id, type, video_url) VALUES (${patientId}, ${type}, ${videoUrl})`;
-  
-  // Notify doctor
-  const [patient] = await sql`SELECT * FROM patients WHERE id = ${patientId}`;
-  if (patient) {
-    await sql`INSERT INTO notifications (user_id, content, type) VALUES (${patient.doctor_id}, ${`Patient ${patient.name} completed a ${type} workout.`}, 'workout')`;
-  }
-  res.json({ success: true });
-});
+  const PORT = 3000;
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
 
-app.get("/api/patients/:id/workouts", async (req, res) => {
-  const workouts = await sql`SELECT * FROM workouts WHERE patient_id = ${req.params.id} ORDER BY timestamp DESC`;
-  const medLogs = await sql`SELECT * FROM medication_logs WHERE patient_id = ${req.params.id} ORDER BY timestamp DESC`;
-  
-  const combined = [
-    ...workouts.map(w => ({ ...w, logType: 'workout' })),
-    ...medLogs.map(m => ({ ...m, logType: 'medication', type: m.medication_name }))
-  ].sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  
-  res.json(combined);
-});
-
-// Medication Logs
-app.post("/api/medication-logs", async (req, res) => {
-  const { patientId, medicationName, videoUrl } = req.body;
-  await sql`INSERT INTO medication_logs (patient_id, medication_name, video_url) VALUES (${patientId}, ${medicationName}, ${videoUrl})`;
-  
-  // Notify doctor
-  const [patient] = await sql`SELECT * FROM patients WHERE id = ${patientId}`;
-  if (patient) {
-    await sql`INSERT INTO notifications (user_id, content, type) VALUES (${patient.doctor_id}, ${`Patient ${patient.name} took their medication: ${medicationName}.`}, 'medication')`;
-  }
-  res.json({ success: true });
-});
-
-// Notifications
-app.get("/api/notifications/:userId", async (req, res) => {
-  const notifications = await sql`SELECT * FROM notifications WHERE user_id = ${req.params.userId} ORDER BY timestamp DESC`;
-  res.json(notifications);
-});
-
-app.post("/api/notifications/:id/read", async (req, res) => {
-  await sql`UPDATE notifications SET read = 1 WHERE id = ${req.params.id}`;
-  res.json({ success: true });
-});
-
-// Messages History
-app.get("/api/messages/:u1/:u2", async (req, res) => {
-  const messages = await sql`
-    SELECT * FROM messages 
-    WHERE (sender_id = ${req.params.u1} AND receiver_id = ${req.params.u2}) 
-    OR (sender_id = ${req.params.u2} AND receiver_id = ${req.params.u1})
-    ORDER BY timestamp ASC
-  `;
-  res.json(messages);
-});
-
-export const handler = serverless(app);
+startServer();
